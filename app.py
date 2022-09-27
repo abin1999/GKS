@@ -1,9 +1,22 @@
 from flask import Flask, render_template, request, url_for, flash
 from werkzeug.utils import redirect
 from flask_mysqldb import MySQL
+import re
+from flask_mail import Mail,Message
+
 
 app = Flask(__name__)
 app.secret_key = 'many random bytes'
+
+app.config['MAIL_SERVER']='smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'jerin@gksinfotech.in'
+app.config['MAIL_PASSWORD'] = 'Jerin@gks123'
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+mail = Mail(app)
+
+
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
@@ -27,12 +40,28 @@ def insert():
     if request.method == "POST":
         flash("Data Inserted Successfully")
         name = request.form['name']
-        address =request.form['address']
         email = request.form['email']
-       
+        address = request.form['address']
         phone = request.form['phone']
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO stud (name, address, email, phone) VALUES (%s, %s, %s, %s)", (name, address, email, phone))
+      
+        cur.execute( "SELECT * FROM stud WHERE email LIKE %s", [email] )
+        check=cur.fetchone()
+        if check:
+           
+            return "already exist"
+        
+        else:
+                
+         cur.execute("INSERT INTO stud (name, email, address, phone) VALUES (%s, %s, %s, %s)", (name, email, address, phone))
+       
+         msg = Message(
+                'Hello',
+                sender ='jerin@gksinfotech.in',
+                recipients = [email]
+               )
+         msg.body = 'Hello Flask message sent from Flask-Mail'
+         mail.send(msg)
         mysql.connection.commit()
         return redirect(url_for('Index'))
 
@@ -49,18 +78,21 @@ def delete(id_data):
 @app.route('/update', methods= ['POST', 'GET'])
 def update():
     if request.method == 'POST':
-        id_data = request.form['id']
+       
         name = request.form['name']
-        address = request.form['address']
         email = request.form['email']
-        
+        address = request.form['address']
         phone = request.form['phone']
+        id_data = request.form['id']
 
         cur = mysql.connection.cursor()
-        cur.execute("""
-        UPDATE stud SET name=%s, email=%s, phone=%s
+        
+        cur.execute( """
+        UPDATE stud SET name=%s, email=%s, address=%s, phone=%s
         WHERE id=%s
-        """, (name, address, email, phone, id_data))
+       """, (name, email, address, phone, id_data))
+        
+        mysql.connection.commit()
         flash("Data Updated Successfully")
         return redirect(url_for('Index'))
 
